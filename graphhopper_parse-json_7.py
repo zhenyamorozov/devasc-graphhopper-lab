@@ -6,107 +6,113 @@ load_dotenv() # dotenv for convenience
 import requests
 import urllib.parse
 
-route_url = "https://graphhopper.com/api/1/route?"
-key = os.getenv("GRAPHHOPPER_KEY")  ## TODO Replace with your API key
+key = os.getenv("GRAPHHOPPER_KEY")  # TODO Replace with your API key
 
 def geocoding (location, key):
-    while location == "":
-        location = input("Enter the location again: ")
-    geocode_url = "https://graphhopper.com/api/1/geocode?" 
-    url = geocode_url + urllib.parse.urlencode({"q":location, "limit": "1", "key":key})
+    geocode_url = "https://graphhopper.com/api/1/geocode?"
+    url = geocode_url + urllib.parse.urlencode({"q":location, "limit":"1", "key":key})
 
-    json_status = requests.get(url).status_code
-    json_data = requests.get(url).json()
-    if json_status == 200 and len(json_data["hits"]) !=0:
+    response = requests.get(url)
+    status_code = response.status_code
+    json_data = response.json()
+    if status_code == 200 and json_data["hits"]:
         lat = json_data["hits"][0]["point"]["lat"]
         lng = json_data["hits"][0]["point"]["lng"]
         name = json_data["hits"][0]["name"]
         value = json_data["hits"][0]["osm_value"]
-        
-        if "country" in json_data["hits"][0]:
-            country = json_data["hits"][0]["country"]
-        else:
-            country=""
-        
+
         if "state" in json_data["hits"][0]:
-            state = json_data["hits"][0]["state"]
-        else:
-            state=""
-        
-        if len(state) !=0 and len(country) !=0:
-            new_loc = name + ", " + state + ", " + country
-        elif len(state) !=0:
-            new_loc = name + ", " + country
-        else:
-            new_loc = name
-        print("Geocoding API URL for " + new_loc + " (Location Type: " + value + ")\n" + url)
+            name += ", " + json_data["hits"][0]["state"]
+
+        if "country" in json_data["hits"][0]:
+            name += ", " + json_data["hits"][0]["country"]
+
+        print("Geocoding API URL for " + name + " (Location Type: " + value + ")\n" + url)
+
+        return status_code, lat, lng, name
     else:
-        lat="null"
-        lng="null"
-        new_loc=location
-        if json_status != 200:
-            print("Geocode API status: " + str(json_status) + "\nError message: " + json_data["message"])
-    return json_status,lat,lng,new_loc
-    
+        if "message" in json_data:
+            print("Geocode API status: " + str(status_code) + "\nError message: " + json_data["message"])
+        return None
+
+
+def routing(origin, destination, key):
+    if orig and dest:
+        op=str(origin[1])+","+str(origin[2])
+        dp=str(destination[1])+","+str(destination[2])
+
+        route_url = "https://graphhopper.com/api/1/route?" + urllib.parse.urlencode([
+            ("key", key),
+            ("vehicle", vehicle),
+            ("point", op),
+            ("point", dp)
+        ])
+
+        response = requests.get(route_url)
+        status_code = response.status_code
+        json_data = response.json()
+        print("Routing API Status: " + str(status_code) + "\nRouting API URL:\n" + route_url)
+
+        if status_code == 200:
+            distance = json_data["paths"][0]["distance"]
+            time = int(json_data["paths"][0]["time"])
+            instructions = json_data["paths"][0]["instructions"]
+
+            return distance, time, instructions
+        else:
+            print("Error message: " + json_data["message"])
+            return None
+    else:
+        return None
+
+
 while True:
+
+    profile1=["car", "car_delivery", "car_avoid_ferry", "car_avoid_motorway", "car_avoid_toll"]
+    profile2=["truck", "small_truck", "small_truck_delivery","scooter", "scooter_delivery"]
+    profile3=["bike", "mtb", "racingbike", "foot", "hike"]
 
     print("\n+++++++++++++++++++++++++++++++++++++++++++++")
     print("Vehicle profiles available on Graphhopper:")
     print("+++++++++++++++++++++++++++++++++++++++++++++")
-    print("car, car_delivery, car_avoid_ferry, car_avoid_motorway, car_avoid_toll")
-    print("truck, small_truck, small_truck_delivery")
-    print("scooter, scooter_delivery, bike, mtb, racingbike, foot, hike")
+    print(", ".join(profile1))
+    print(", ".join(profile2))
+    print(", ".join(profile3))
     print("+++++++++++++++++++++++++++++++++++++++++++++")
-    profile1=["car", "car_delivery", "car_avoid_ferry", "car_avoid_motorway", "car_avoid_toll"]
-    profile2=["truck", "small_truck", "small_truck_delivery","scooter", "scooter_delivery"]
-    profile3=["bike", "mtb", "racingbike", "foot", "hike"]
     vehicle = input("Enter a vehicle profile from the list above: ")
     if vehicle == "quit" or vehicle == "q":
         break
-    elif vehicle in profile1 or vehicle in profile2 or vehicle in profile3:
-        vehicle = vehicle
-    else: 
+    elif vehicle not in profile1 + profile2 + profile3:
         vehicle = "car"
         print("No valid vehicle profile was entered. Using the car profile.")
 
     loc1 = input("Starting Location: ")
     if loc1 == "quit" or loc1 == "q":
         break
-    orig = geocoding(loc1, key)
 
     loc2 = input("Destination: ")
     if loc2 == "quit" or loc2 == "q":
         break
+
+    orig = geocoding(loc1, key)
     dest = geocoding(loc2, key)
 
-    print("=================================================")
-    if orig[0] == 200 and dest[0] == 200:
-        op="&point="+str(orig[1])+"%2C"+str(orig[2])
-        dp="&point="+str(dest[1])+"%2C"+str(dest[2])
-        paths_url = route_url + urllib.parse.urlencode({"key":key, "vehicle":vehicle}) + op + dp
-        paths_status = requests.get(paths_url).status_code
-        paths_data = requests.get(paths_url).json()
-        print("Routing API Status: " + str(paths_status) + "\nRouting API URL:\n" + paths_url)
+    path = routing(orig, dest, key)
 
+    print("=================================================")
+    if path:
         print("=================================================")
         print("Directions from " + orig[3] + " to " + dest[3] + " by " + vehicle)
         print("=================================================")
-        if paths_status == 200:
-            miles = (paths_data["paths"][0]["distance"])/1000/1.61
-            km = (paths_data["paths"][0]["distance"])/1000
-            sec = int(paths_data["paths"][0]["time"]/1000%60)
-            min = int(paths_data["paths"][0]["time"]/1000/60%60)
-            hr = int(paths_data["paths"][0]["time"]/1000/60/60)
+        miles = path[0]/1000/1.61
+        km = path[0]/1000
+        sec = int(path[1]/1000%60)
+        min = int(path[1]/1000/60%60)
+        hr = int(path[1]/1000/60/60)
 
-            print("Distance Traveled: {0:.1f} miles / {1:.1f} km".format(miles, km))
-            print("Trip Duration: {0:02d}:{1:02d}:{2:02d}".format(hr, min, sec))
-            print("=================================================")
-            for each in range(len(paths_data["paths"][0]["instructions"])):
-                path = paths_data["paths"][0]["instructions"][each]["text"]
-                distance = paths_data["paths"][0]["instructions"][each]["distance"]
-                print("{0} ( {1:.1f} km / {2:.1f} miles )".format(path, distance/1000, distance/1000/1.61))
-            print("=============================================")
-        else:
-            print("Error message: " + paths_data["message"])
-            print("*************************************************")
-
+        print("Distance Traveled: {0:.1f} miles / {1:.1f} km".format(miles, km))
+        print("Trip Duration: {0:02d}:{1:02d}:{2:02d}".format(hr, min, sec))
+        print("=================================================")
+        for step in path[2]:
+            print("{0} ( {1:.1f} km / {2:.1f} miles )".format(step["text"], step["distance"]/1000, step["distance"]/1000/1.61))
+        print("=============================================")
