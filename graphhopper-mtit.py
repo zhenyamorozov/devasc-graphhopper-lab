@@ -42,8 +42,8 @@ def geocode(location):
 def route(origin, destination):
     '''
     Retrieves a route between two given points.
-    Expects points as a list of floats: [lat, long]
-    Returns: TODO
+    Expects points as a list of floats: [lat, lon]
+    Returns: a dict with keys TODO
     '''
 
     # Prepare request parameters
@@ -74,7 +74,6 @@ def route(origin, destination):
     }
 
     return result
-
 
 
 point_a = geocode('Berlin')
