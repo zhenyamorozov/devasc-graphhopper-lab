@@ -37,7 +37,7 @@ def geocoding (location, key):
 
 
 def routing(origin, destination, key):
-    if orig and dest:
+    if origin and destination:
         op=str(origin[1])+","+str(origin[2])
         dp=str(destination[1])+","+str(destination[2])
 
@@ -101,9 +101,8 @@ while True:
 
     print("=================================================")
     if path:
-        print("=================================================")
         print("Directions from " + orig[3] + " to " + dest[3] + " by " + vehicle)
-        print("=================================================")
+        print("-------------------------------------------------")
         miles = path[0]/1000/1.61
         km = path[0]/1000
         sec = int(path[1]/1000%60)
@@ -112,7 +111,9 @@ while True:
 
         print("Distance Traveled: {0:.1f} miles / {1:.1f} km".format(miles, km))
         print("Trip Duration: {0:02d}:{1:02d}:{2:02d}".format(hr, min, sec))
-        print("=================================================")
+        print("-------------------------------------------------")
         for step in path[2]:
             print("{0} ( {1:.1f} km / {2:.1f} miles )".format(step["text"], step["distance"]/1000, step["distance"]/1000/1.61))
-        print("=============================================")
+    else:
+        print("Route not found")
+    print("=================================================")
