@@ -61,7 +61,7 @@ def route(origin, destination):
         params=params
     )
 
-    # Check if request was succesful
+    # Check if request was succesful 
     if resp.status_code != 200:
         return
 
